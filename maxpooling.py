@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Maxpool:
 
     def __init__(self, input_shape, window_shape, stride=None, pad=0):
@@ -11,6 +12,7 @@ class Maxpool:
         n1 = (input_shape[1] - window_shape + 2 * pad) // self.stride + 1
         self.output_shape = (n0, n1, input_shape[2], input_shape[3])
         self.output = np.zeros(self.output_shape)
+        self.training = False
         self.input = None
         self.extra = None
         self.n = None
@@ -109,7 +111,7 @@ class Maxpool:
                     s += 1
             return out_delta
 
-    def update(self, delta, learning_rate):
+    def update(self, delta, learning_rate, mini_size):
         delta_z = self.find_gradient(delta)
         delta_z = delta_z[self.pad:self.pad + self.input_shape[0], self.pad:self.pad + self.input_shape[1]]
         return delta_z
