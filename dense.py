@@ -14,7 +14,7 @@ class Dense:
             self.dropout_mask = None
         self.input = None
         self.training = False
-
+        self.regularize_para = 0
         self.mean = np.zeros_like(self.biases)
         self.variance = np.zeros_like(self.biases)
         self.gamma = np.ones_like(self.biases)
@@ -54,8 +54,8 @@ class Dense:
             self.gamma -= learning_rate * self.vg / np.sqrt(self.sg + 1e-8)
 
         delta_w, delta_b, delta_z = self.find_gradient(delta)
-        delta_w = delta_w / mini_size
-        delta_b = delta_b / mini_size
+        delta_w = delta_w + (self.regularize_para / mini_size) * self.weights
+        delta_b = delta_b
         self.vw = beta1 * self.vw + (1 - beta1) * delta_w
         self.vb = beta1 * self.vb + (1 - beta1) * delta_b
         self.sw = beta2 * self.sw + (1 - beta2) * np.square(delta_w)
@@ -91,4 +91,3 @@ class Dense:
                * np.sum(d_xhat * x_hat, axis=0, keepdims=True)) / (m * np.sqrt(variance + 1e-8))
 
         return d_z, d_gamma
-

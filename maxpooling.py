@@ -22,7 +22,7 @@ class Maxpool:
         self.input = input_layer
         if self.stride == self.window_shape:
             out = input_layer[:int((input_layer.shape[0] // self.window_shape) * self.window_shape),
-                  :int((input_layer.shape[1] // self.window_shape) * self.window_shape)]
+                              :int((input_layer.shape[1] // self.window_shape) * self.window_shape)]
             out = np.maximum.reduceat(out, np.arange(0, out.shape[0], self.stride), axis=0)
             out = np.maximum.reduceat(out, np.arange(0, out.shape[1], self.stride), axis=1)
             self.output = out
@@ -52,10 +52,10 @@ class Maxpool:
                     temp = input_layer[i:, j:]
                     a = int(((temp.shape[0] // (self.window_shape + extra)) * (self.window_shape + extra)) +
                             (self.window_shape + extra if temp.shape[0] % (self.window_shape + extra) ==
-                                                          self.window_shape else 0))
+                            self.window_shape else 0))
                     b = int(((temp.shape[1] // (self.window_shape + extra)) * (self.window_shape + extra)) +
                             (self.window_shape + extra if temp.shape[1] % (self.window_shape + extra) ==
-                                                          self.window_shape else 0))
+                            self.window_shape else 0))
                     temp = temp[:a, :b]
 
                     self.d_list.append((a, b))

@@ -1,13 +1,12 @@
 import numpy as np
 
-
 class Conv:
 
     def __init__(self, input_shape, weights_shape, stride=1, padding=0, batch_normalize=False):
         self.input_shape = input_shape
         self.weights_shape = weights_shape
         self.weights = np.random.randn(*weights_shape)
-        self.biases = np.random.randn(1, 1,1, weights_shape[2])
+        self.biases = np.random.randn(1, 1, 1, weights_shape[2])
         self.stride = stride
         self.pad = padding
         n0 = (self.input_shape[0] - self.weights_shape[0] + 2 * padding) // self.stride + 1
@@ -176,7 +175,7 @@ class Conv:
         return delta_z
 
     def batch_norm(self, inputs):
-        alpha = 0.9
+        alpha = 0.99
         if self.training:
             mean = np.mean(inputs, axis=(0, 1, 2), keepdims=True)
             variance = np.var(inputs, axis=(0, 1, 2), keepdims=True)
