@@ -1,14 +1,15 @@
 import numpy as np
 
+
 class Dense:
 
-    def __init__(self, input_shape, output_shape, dropout=None, batch_normalize=False):
+    def __init__(self, input_shape, output_shape, activation, dropout=None, batch_norm_momentum=False):
 
-        self.weights = np.random.randn(input_shape, output_shape)
+        self.weights = np.random.normal(0, np.sqrt(1/input_shape), (input_shape, output_shape))
         self.biases = np.random.randn(1, output_shape)
         self.output_shape = output_shape
         self.output = np.zeros(output_shape)
-
+        self.activation = activation
         self.dropout = dropout
         if dropout:
             self.dropout_mask = None
@@ -18,7 +19,7 @@ class Dense:
         self.mean = np.zeros_like(self.biases)
         self.variance = np.zeros_like(self.biases)
         self.gamma = np.ones_like(self.biases)
-        self.batch_normalize = batch_normalize
+        self.batch_normalize = batch_norm_momentum
         self.batch_norm_cache = None
         self.vw = 0
         self.sw = 0
@@ -27,7 +28,7 @@ class Dense:
         self.vg = 0
         self.sg = 0
 
-    def out(self, input_layer):
+    def forward(self, input_layer):
         self.input = input_layer
         output = np.dot(input_layer, self.weights) + self.biases
         if self.batch_normalize:
@@ -37,6 +38,7 @@ class Dense:
             mask = np.random.rand(1, self.output.shape[1]) > self.dropout
             self.dropout_mask = np.broadcast_to(mask, self.output.shape)
             self.output[self.dropout_mask] = 0
+        self.output = self.activation.forward(self.output)
         return self.output
 
     def find_gradient(self, delta):
@@ -46,6 +48,7 @@ class Dense:
         return delta_w, delta_b, delta_z
 
     def update(self, delta, learning_rate, mini_size, beta1=0.9, beta2=0.999):
+        delta = self.activation.backward(delta)
         if self.batch_normalize:
             delta, delta_g = self.batch_norm_backwards(delta)
             self.vg = self.vg = beta1 * self.vg + (1 - beta1) * delta_g
@@ -66,12 +69,11 @@ class Dense:
         return delta_z
 
     def batch_norm(self, inputs):
-        alpha = 0.99
         if self.training:
             mean = np.mean(inputs, axis=0, keepdims=True)
             variance = np.var(inputs, axis=0, keepdims=True)
-            self.mean = alpha * self.mean + (1 - alpha) * mean
-            self.variance = alpha * self.variance + (1 - alpha) * variance
+            self.mean = self.batch_normalize * self.mean + (1 - self.batch_normalize) * mean
+            self.variance = self.batch_normalize * self.variance + (1 - self.batch_normalize) * variance
         else:
             mean = self.mean
             variance = self.variance

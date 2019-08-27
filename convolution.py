@@ -1,21 +1,21 @@
 import numpy as np
 
+
 class Conv:
 
-    def __init__(self, input_shape, weights_shape, stride=1, padding=0, batch_normalize=False):
-        self.input_shape = input_shape
+    def __init__(self, weights_shape, activation, stride=1, padding=0, batch_norm_momentum=False):
         self.weights_shape = weights_shape
-        self.weights = np.random.randn(*weights_shape)
+        var = 1 / weights_shape[0]*weights_shape[1]*weights_shape[3]
+        self.weights = np.random.normal(0, np.sqrt(var), weights_shape)
         self.biases = np.random.randn(1, 1, 1, weights_shape[2])
         self.stride = stride
         self.pad = padding
-        n0 = (self.input_shape[0] - self.weights_shape[0] + 2 * padding) // self.stride + 1
-        n1 = (self.input_shape[1] - self.weights_shape[1] + 2 * padding) // self.stride + 1
-        self.output_shape = n0, n1, input_shape[2], weights_shape[2]
-        self.output = np.zeros(self.output_shape)
+        self.activation = activation
+        self.output = None
         self.input = None
+        self.input_shape = None
         self.training = False
-        self.batch_normalize = batch_normalize
+        self.batch_normalize = batch_norm_momentum
         self.batch_norm_cache = None
         self.mean = np.ones(self.biases.shape)
         self.variance = np.ones(self.biases.shape)
@@ -27,10 +27,11 @@ class Conv:
         self.vg = 0
         self.sg = 0
 
-    def out(self, input_layer, weights=None, stride=None, pad=None, d_conv=False, d_a=False, delta=None):
+    def forward(self, input_layer, weights=None, stride=None, pad=None, d_conv=False, d_a=False, delta=None):
         if not d_conv:
             if not d_a:
                 self.input = input_layer
+                self.input_shape = input_layer.shape
             weights = self.weights
             stride = self.stride
             pad = self.pad
@@ -124,8 +125,8 @@ class Conv:
                         temp3 = temp3[:, :-s2]
 
                 if d_a:
-                    delt = np.repeat(np.repeat(delta[c1::n1, c2::n2], w0, 0), w1, 1) \
-                               [:temp3.shape[0], :temp3.shape[1]] * temp3
+                    delt = np.repeat(np.repeat(delta[c1::n1, c2::n2], w0, 0), w1, 1)[:temp3.shape[0],
+                                                                                     :temp3.shape[1]] * temp3
                     input_layer[j:j + temp3.shape[0], i:i + temp3.shape[1]] += delt.sum(axis=3)
                 else:
                     b = temp3 * input_layer[j:j + temp3.shape[0], i:i + temp3.shape[1]]
@@ -139,22 +140,23 @@ class Conv:
         out = out.sum(axis=4)
         if self.batch_normalize:
             out = self.batch_norm(out)
-        self.output = out + self.biases
+        self.output = self.activation.forward(out + self.biases)
         return self.output
 
     def find_gradient(self, delta):
         s1, s2, s3, s4 = delta.shape
         delta_b = np.add.reduce(delta.sum(axis=2, keepdims=True), axis=(0, 1), keepdims=True)
-        delta_a = self.out(np.zeros_like(self.input), d_a=True, delta=delta)
+        delta_a = self.forward(np.zeros_like(self.input), d_a=True, delta=delta)
         expanded = np.zeros((s1 * self.stride - (self.stride - 1), s2 * self.stride - (self.stride - 1), s3, s4))
         expanded[::self.stride, ::self.stride] = delta
-        temp = self.out(self.input, expanded, 1, self.pad, True)
+        temp = self.forward(self.input, expanded, 1, self.pad, True)
         delta_a = delta_a[self.pad:self.pad + self.input_shape[0],
-                  self.pad:self.pad + self.input_shape[1]]
+                          self.pad:self.pad + self.input_shape[1]]
         delta = temp[:self.weights_shape[0], :self.weights_shape[1]]
         return delta, delta_b, delta_a
 
     def update(self, delta, learning_rate, mini_size, beta1=0.9, beta2=0.999):
+        delta = self.activation.backward(delta)
         if self.batch_normalize:
             delta, delta_g = self.batch_norm_backwards(delta)
 
@@ -175,12 +177,11 @@ class Conv:
         return delta_z
 
     def batch_norm(self, inputs):
-        alpha = 0.99
         if self.training:
             mean = np.mean(inputs, axis=(0, 1, 2), keepdims=True)
             variance = np.var(inputs, axis=(0, 1, 2), keepdims=True)
-            self.mean = alpha * self.mean + (1-alpha)*mean
-            self.variance = alpha * self.variance + (1-alpha)*variance
+            self.mean = self.batch_normalize * self.mean + (1-self.batch_normalize)*mean
+            self.variance = self.batch_normalize * self.variance + (1-self.batch_normalize)*variance
         else:
             mean = self.mean
             variance = self.variance

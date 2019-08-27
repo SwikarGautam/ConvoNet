@@ -3,23 +3,25 @@ import numpy as np
 
 class Maxpool:
 
-    def __init__(self, input_shape, window_shape, stride=None, pad=0):
-        self.input_shape = input_shape
+    def __init__(self, window_shape, stride=None, pad=0):
+        self.input_shape = None
         self.window_shape = window_shape
         self.stride = stride if stride else window_shape
         self.pad = pad
-        n0 = (input_shape[0] - window_shape + 2 * pad) // self.stride + 1
-        n1 = (input_shape[1] - window_shape + 2 * pad) // self.stride + 1
-        self.output_shape = (n0, n1, input_shape[2], input_shape[3])
-        self.output = np.zeros(self.output_shape)
+        self.output_shape = 0
+        self.output = None
         self.training = False
         self.input = None
         self.extra = None
         self.n = None
         self.d_list = []
 
-    def out(self, input_layer):
+    def forward(self, input_layer):
         self.input = input_layer
+        self.input_shape = input_layer.shape
+        n0 = (input_layer.shape[0] - self.window_shape + 2 * self.pad) // self.stride + 1
+        n1 = (input_layer.shape[1] - self.window_shape + 2 * self.pad) // self.stride + 1
+        self.output_shape = (n0, n1, input_layer.shape[2], input_layer.shape[3])
         if self.stride == self.window_shape:
             out = input_layer[:int((input_layer.shape[0] // self.window_shape) * self.window_shape),
                               :int((input_layer.shape[1] // self.window_shape) * self.window_shape)]
