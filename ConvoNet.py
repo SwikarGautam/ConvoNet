@@ -17,6 +17,7 @@ class ConvoNet:
         self.sequence = []
         self.loss = loss
         self.frobenius_norm = 0
+        self.output = None
 
     def predict(self, input_values):
         
@@ -24,18 +25,23 @@ class ConvoNet:
         for i, layer in enumerate(self.sequence):
             layer.training = False
             inp = layer.forward(inp)
-        return inp
+        self.output = inp
+        return self.output
 
     def train(self, training_data, epoch, learning_rate, mini_batch_size, print_mini_batch_loss):
 
         for e in range(epoch):
             mini_batches = self.arrange_data(training_data, mini_batch_size)
-            print("Generation:", e+1)
+            #print("Generation:", e+1)
 
             for mini_batch in mini_batches:
-                x_train, y_train = mini_batch
+                if isinstance(self.sequence[0], Dense):
+                    x_train, y_train = [np.array(list(x)) for x in zip(*mini_batch)]
+                else:
+                    x_train, y_train = mini_batch
                 self.frobenius_norm = 0
                 inp = x_train
+                self.predict(inp)
                 for i, layer in enumerate(self.sequence):
                     layer.training = True
                     inp = layer.forward(inp)
@@ -43,7 +49,6 @@ class ConvoNet:
                     if isinstance(layer, Dense):
                         layer.regularize_para = self.regularize_para
                         self.frobenius_norm += np.sum(layer.weights**2)
-
                 output = inp
                 if print_mini_batch_loss:
                     print('mini batch loss:', self.loss.calc_loss(output, y_train.squeeze(),
@@ -63,13 +68,20 @@ class ConvoNet:
         for layer in self.sequence:
             layer.batch_normalize = momentum
 
-    @staticmethod
-    def arrange_data(data, mini_size):
+    def set_update(self, boolean):
+        for layer in self.sequence:
+            layer.update_flag = boolean
+
+    def arrange_data(self, data, mini_size):
         random.shuffle(data)
-        x_train, y_train = [np.array(list(x)) for x in zip(*data)]
-        inp = np.stack(x_train, axis=2)
-        x_train = np.array_split(inp, (len(data)+1)//mini_size, axis=2)
-        y_train = np.array_split(y_train, (len(data)+1)//mini_size, axis=0)
+        if isinstance(self.sequence[0], Dense):
+            mini_data = (data[k:k+mini_size] for k in range(0, len(data), mini_size))
+            return mini_data
+        else:
+            x_train, y_train = [np.array(list(x)) for x in zip(*data)]
+            inp = np.stack(x_train, axis=2)
+            x_train = np.array_split(inp, (len(data)+1)//mini_size, axis=2)
+            y_train = np.array_split(y_train, (len(data)+1)//mini_size, axis=0)
         return list(zip(x_train, y_train))
 
     def evaluate(self, test_set):
@@ -87,3 +99,8 @@ class ConvoNet:
         input_layer = np.zeros(self.input_shape)
         last_layer = self.predict(input_layer)
         return last_layer.flatten().size
+
+    def set_adam_parameters(self, beta1, beta2):
+        for layer in self.sequence:
+            layer.beta1 = beta1
+            layer.beta2 = beta2

@@ -20,6 +20,7 @@ class Conv:
         self.mean = np.ones(self.biases.shape)
         self.variance = np.ones(self.biases.shape)
         self.gamma = np.ones(self.biases.shape)
+        self.update_flag = True
         self.vw = 0
         self.vb = 0
         self.sw = 0
@@ -165,15 +166,16 @@ class Conv:
 
             self.gamma -= learning_rate * self.vg / np.sqrt(self.sg + 1e-8)
         delta_w, delta_b, delta_z = self.find_gradient(delta)
-        delta_w = delta_w/mini_size
-        delta_b = delta_b/mini_size
-        self.vw = beta1 * self.vw + (1 - beta1) * delta_w
-        self.vb = beta1 * self.vb + (1 - beta1) * delta_b
-        self.sw = beta2 * self.sw + (1 - beta2) * np.square(delta_w)
-        self.sb = beta2 * self.sb + (1 - beta2) * np.square(delta_b)
+        if self.update_flag:
+            delta_w = delta_w/mini_size
+            delta_b = delta_b/mini_size
+            self.vw = beta1 * self.vw + (1 - beta1) * delta_w
+            self.vb = beta1 * self.vb + (1 - beta1) * delta_b
+            self.sw = beta2 * self.sw + (1 - beta2) * np.square(delta_w)
+            self.sb = beta2 * self.sb + (1 - beta2) * np.square(delta_b)
 
-        self.weights -= learning_rate * self.vw / np.sqrt(self.sw + 1e-8)
-        self.biases -= learning_rate * self.vb / np.sqrt(self.sb + 1e-8)
+            self.weights -= learning_rate * self.vw / np.sqrt(self.sw + 1e-8)
+            self.biases -= learning_rate * self.vb / np.sqrt(self.sb + 1e-8)
         return delta_z
 
     def batch_norm(self, inputs):

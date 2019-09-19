@@ -37,7 +37,7 @@ Net.add(Dense(64, 10, Softmax(), dropout=0.9))
 Net.set_regularization(0.001)  # sets regularization parameter
 Net.set_batch_norm_momentum(0.1)  # sets batch normalization on all layers with momentum value
 
-Net.train(train_set, 1, 0.01, 64, True)
-Net.evaluate(test_set)  # evaluates the network
-print(np.argmax(Net.predict(np.random.rand(28, 28, 5, 1)), axis=1))  # shape should be (height, width, nsamples, nchannel)
-
+Net.train(train_set[:1000], 1, 0.01, 64, True)
+#Net.evaluate(test_set)  # evaluates the network
+print(np.argmax(Net.predict(x_test[0][...,np.newaxis]), axis=1))
+print(y_test[0])
